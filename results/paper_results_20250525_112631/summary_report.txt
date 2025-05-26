@@ -1,0 +1,21 @@
+=== TRADE SIMULATION RESULTS SUMMARY ===
+Generated: 2025-05-25 11:26:48
+Iterations per experiment: 200
+
+EXPERIMENT 1: Leadership Comparison
+Moderate vs Volatile US Leadership Impact:
+  US: 30.0% payoff change
+  Eurozone: -1.2% payoff change
+  China: -0.4% payoff change
+  Japan: -19.6% payoff change
+  Canada: -6.5% payoff change
+  Mexico: -14.2% payoff change
+  UK: -3.5% payoff change
+  Singapore: -5.6% payoff change
+
+EXPERIMENT 2: Reserve Currency Analysis
+US impact when reserve status reduced: 0.46
+China impact when reserve status increased: 0.21
+
+EXPERIMENT 3: Strategy Tournament
+US Strategy Rankings (by payoff):

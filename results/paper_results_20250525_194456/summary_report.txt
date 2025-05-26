@@ -1,0 +1,42 @@
+=== TRADE SIMULATION RESULTS SUMMARY ===
+Generated: 2025-05-25 19:45:21
+Iterations per experiment: 200
+
+EXPERIMENT 1: Leadership Comparison
+Moderate vs Volatile US Leadership Impact:
+  US: 31.1% payoff change
+  Eurozone: -3.1% payoff change
+  China: -0.7% payoff change
+  Japan: -19.7% payoff change
+  Canada: -6.5% payoff change
+  Mexico: -14.6% payoff change
+  UK: -3.8% payoff change
+  Singapore: -5.8% payoff change
+
+EXPERIMENT 2: Reserve Currency Analysis
+US impact when reserve status reduced: 0.54
+China impact when reserve status increased: 0.21
+
+EXPERIMENT 3: Strategy Tournament
+US Strategy Rankings (by payoff):
+  1. aggressive: -4.81
+  2. tit_for_tat: -6.30
+  3. generous_tit_for_tat: -6.40
+  4. cooperative: -6.76
+
+EXPERIMENT 4: Crisis Scenarios
+Impact of currency crises on affected countries:
+  Mexico (peso crisis): -0.01 payoff change
+  UK (pound crisis): -0.01 payoff change
+
+EXPERIMENT 5: China Cooperation Sensitivity
+Optimal cooperation level for China: 0.9
+China payoff at optimal: 3.51
+
+
+=== KEY FINDINGS ===
+1. Volatile US leadership creates persistent conflicts with Japan
+2. Reserve currency status provides meaningful but not decisive advantages
+3. Strategic flexibility (tit-for-tat variants) outperforms rigid strategies
+4. Currency crises have localized impacts in this model
+5. Moderate cooperation levels optimize outcomes for most countries

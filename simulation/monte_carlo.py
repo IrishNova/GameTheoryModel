@@ -162,15 +162,23 @@ class MonteCarloSimulation:
         """Save results to file"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
+        # Get project root directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+        data_dir = os.path.join(project_root, "data", "historical")
+
+        # Ensure data directory exists
+        os.makedirs(data_dir, exist_ok=True)
+
         # Save summary
-        summary_path = f"/Users/ryanmoloney/Desktop/DePaul 24/GameTheoryModel/data/historical/monte_carlo_summary_{timestamp}.json"
+        summary_path = os.path.join(data_dir, f"monte_carlo_summary_{timestamp}.json")
         with open(summary_path, 'w') as f:
             json.dump(analysis, f, indent=2)
 
         print(f"\nResults saved to: {summary_path}")
 
         # Also save raw results for detailed analysis
-        raw_path = f"/Users/ryanmoloney/Desktop/DePaul 24/GameTheoryModel/data/historical/monte_carlo_raw_{timestamp}.json"
+        raw_path = os.path.join(data_dir, f"monte_carlo_raw_{timestamp}.json")
 
         # Convert results to serializable format
         raw_data = []

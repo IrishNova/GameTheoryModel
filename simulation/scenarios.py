@@ -13,7 +13,6 @@ import numpy as np
 from simulation.engine import TradeSimulation
 from simulation.monte_carlo import MonteCarloSimulation
 from config.countries_data import create_countries
-from core.country import Country
 import json
 from datetime import datetime
 

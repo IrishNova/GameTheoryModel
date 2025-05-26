@@ -5,8 +5,8 @@ Loads REAL data from IBKR and economic research
 import json
 import os
 
-# Path to YOUR researched data
-DATA_DIR = "/Users/ryanmoloney/Desktop/DePaul 24/GameTheoryModel/data/historical"
+PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(PACKAGE_DIR, "data", "historical")
 
 # Load YOUR IBKR FX data
 print("Loading researched FX data from IBKR...")

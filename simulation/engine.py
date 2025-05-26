@@ -1,25 +1,30 @@
 """
 Core simulation engine for trade game
+Updated to support US leadership dynamics and monthly periods
 """
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from core.country import Country
-from dynamics.payoffs import get_payoffs  # Fixed import path
+from dynamics.payoffs import get_payoffs
+from dynamics.leadership import USLeadershipDynamics
 from config.parameters import DEFAULT_ROUNDS, CURRENT_FX_RATES, VOLATILITIES
 import pandas as pd
 
 
 class TradeSimulation:
-    """Main simulation engine"""
+    """Main simulation engine with leadership dynamics"""
 
-    def __init__(self, countries: List[Country], rounds: int = DEFAULT_ROUNDS):
+    def __init__(self, countries: List[Country], rounds: int = DEFAULT_ROUNDS,
+                 us_leadership_profile: str = 'moderate',
+                 enable_leadership_dynamics: bool = True):
         self.countries = countries
         self.rounds = rounds
         self.current_round = 0
+        self.current_month = 0  # Track months for leadership dynamics
 
         # Initialize exchange rates from YOUR IBKR data
         self.exchange_rates = self._initialize_exchange_rates()
@@ -27,6 +32,20 @@ class TradeSimulation:
         # Track metrics
         self.round_data = []
         self.global_uncertainty = 0.0
+
+        # Leadership dynamics
+        self.enable_leadership_dynamics = enable_leadership_dynamics
+        self.us_country = next((c for c in countries if c.name == "US"), None)
+        self.leadership_dynamics = None
+        self.leadership_events = []  # Track all leadership events
+
+        if self.enable_leadership_dynamics and self.us_country:
+            self.leadership_dynamics = USLeadershipDynamics(
+                initial_profile=us_leadership_profile
+            )
+            # Apply initial profile
+            self.us_country.strategy = self.leadership_dynamics.current_profile.strategy
+            self.us_country.cooperation_tendency = self.leadership_dynamics.current_profile.cooperation_tendency
 
     def _initialize_exchange_rates(self) -> Dict[str, float]:
         """Initialize FX rates from your IBKR data"""
@@ -130,6 +149,7 @@ class TradeSimulation:
         """Simulate one round of the game"""
         round_results = {
             'round': self.current_round,
+            'month': self.current_month,
             'actions': {},
             'payoffs': {},
             'fx_rates': self.exchange_rates.copy()
@@ -163,6 +183,27 @@ class TradeSimulation:
                 round_results['actions'][pair_key] = (action1, action2)
                 round_results['payoffs'][pair_key] = (payoff1, payoff2)
 
+        # Process US leadership dynamics (monthly)
+        if self.enable_leadership_dynamics and self.leadership_dynamics:
+            global_conditions = {
+                'global_uncertainty': self.global_uncertainty,
+                'crisis': self.global_uncertainty > 0.7
+            }
+
+            events = self.leadership_dynamics.process_month(
+                self.current_month,
+                self.us_country,
+                round_results,
+                global_conditions
+            )
+
+            if any(events.values()):
+                self.leadership_events.append({
+                    'month': self.current_month,
+                    'events': events
+                })
+                round_results['leadership_events'] = events
+
         # Update exchange rates for next round
         self.update_exchange_rates()
 
@@ -171,6 +212,7 @@ class TradeSimulation:
 
         self.round_data.append(round_results)
         self.current_round += 1
+        self.current_month += 1
 
     def _update_global_conditions(self, round_results):
         """Update global uncertainty based on cooperation levels"""
@@ -190,6 +232,9 @@ class TradeSimulation:
         """Run the complete simulation"""
         print(f"Starting simulation with {len(self.countries)} countries for {self.rounds} rounds")
 
+        if self.enable_leadership_dynamics and self.leadership_dynamics:
+            print(f"US Leadership: {self.leadership_dynamics.current_profile.name}")
+
         for round_num in range(self.rounds):
             self.simulate_round()
 
@@ -197,17 +242,39 @@ class TradeSimulation:
                 print(f"  Round {round_num}: Global uncertainty = {self.global_uncertainty:.3f}")
 
         print("Simulation complete!")
+
+        # Print leadership summary if enabled
+        if self.leadership_events:
+            print("\n=== Leadership Events Summary ===")
+            for event in self.leadership_events:
+                print(f"Month {event['month']}: {self._summarize_events(event['events'])}")
+
         return self.get_results()
+
+    def _summarize_events(self, events: Dict) -> str:
+        """Summarize leadership events for printing"""
+        summary = []
+        if events.get('leadership_change'):
+            summary.append("Leadership changed")
+        if events.get('grudges_added'):
+            for country, duration in events['grudges_added']:
+                summary.append(f"Grudge vs {country} ({duration}mo)")
+        if events.get('negotiation_triggered'):
+            for country, duration in events['negotiation_triggered']:
+                summary.append(f"Deal with {country} ({duration}mo)")
+        return ", ".join(summary) if summary else "No events"
 
     def get_results(self) -> Dict:
         """Compile simulation results"""
         results = {
             'countries': [c.name for c in self.countries],
             'rounds': self.rounds,
+            'months': self.current_month,
             'round_data': self.round_data,
             'final_payoffs': {},
             'cooperation_rates': {},
-            'average_payoffs': {}
+            'average_payoffs': {},
+            'leadership_events': self.leadership_events
         }
 
         # Calculate final statistics
@@ -219,33 +286,43 @@ class TradeSimulation:
             results['average_payoffs'][country.name] = total_payoff / total_interactions if total_interactions > 0 else 0
 
             # Cooperation rate
-            total_cooperations = 0
-            total_actions = 0
-            for opponent, history in country.history.items():
-                total_actions += len(history)
-                total_cooperations += len([a for a in history if a == 0])
+            results['cooperation_rates'][country.name] = country.get_cooperation_rate()
 
-            results['cooperation_rates'][country.name] = total_cooperations / total_actions if total_actions > 0 else 0
+        # Add leadership history if enabled
+        if self.enable_leadership_dynamics and self.leadership_dynamics:
+            results['leadership_history'] = self.leadership_dynamics.history
+            results['final_us_profile'] = self.leadership_dynamics.current_profile.name
 
         return results
 
 
-# Test the simulation
+# Test the simulation with leadership dynamics
 if __name__ == "__main__":
     from config.countries_data import create_countries
 
     # Create countries with your data
     countries = create_countries()
 
-    # Run a short test simulation
-    sim = TradeSimulation(countries, rounds=10)
+    # Test 1: Normal simulation
+    print("=== Test 1: Baseline (Moderate US) ===")
+    sim = TradeSimulation(countries, rounds=20, us_leadership_profile='moderate')
     results = sim.run()
 
-    print("\n=== Simulation Results ===")
-    print(f"Average Payoffs (using YOUR trade weights & FX data):")
+    print(f"\nAverage Payoffs:")
     for country, payoff in results['average_payoffs'].items():
         print(f"  {country}: {payoff:.3f}")
 
-    print(f"\nCooperation Rates:")
-    for country, rate in results['cooperation_rates'].items():
-        print(f"  {country}: {rate:.1%}")
+    # Test 2: Volatile US leadership
+    print("\n\n=== Test 2: Volatile US Leadership ===")
+    countries2 = create_countries()  # Fresh countries
+    sim2 = TradeSimulation(countries2, rounds=20, us_leadership_profile='volatile_populist')
+    results2 = sim2.run()
+
+    print(f"\nAverage Payoffs with Volatile US:")
+    for country, payoff in results2['average_payoffs'].items():
+        print(f"  {country}: {payoff:.3f}")
+
+    # Compare US cooperation rates
+    print(f"\nUS Cooperation Rate:")
+    print(f"  Moderate: {results['cooperation_rates']['US']:.1%}")
+    print(f"  Volatile: {results2['cooperation_rates']['US']:.1%}")
